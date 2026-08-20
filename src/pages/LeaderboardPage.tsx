@@ -15,7 +15,6 @@ import {
   Button,
   Input,
   useToast,
-  Divider,
 } from '@chakra-ui/react';
 import { Trophy, Clock, Zap, Shield, User, Award } from 'lucide-react';
 import { GameState } from '../game/commandParser';

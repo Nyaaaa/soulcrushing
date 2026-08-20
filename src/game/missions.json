@@ -19,38 +19,44 @@
         "id": "obj_scan_gateway",
         "title": "Map Perimeter Gateway",
         "description": "Scan subnet and probe the gateway node at 192.168.0.1.",
-        "completed": false
+        "completed": false,
+        "trigger": { "kind": "scan" }
       },
       {
         "id": "obj_breach_gateway",
         "title": "Breach Gateway & Locate Auth Proxy",
         "description": "Deploy port_brute against 192.168.0.1 and read routing logs to discover 192.168.0.14.",
-        "completed": false
+        "completed": false,
+        "trigger": { "kind": "breach", "nodeId": "node_gateway" }
       },
       {
         "id": "obj_extract_key",
         "title": "Acquire Vault Decryption Key",
         "description": "Infiltrate Auth-Proxy (192.168.0.14) and download vault_access.key.",
-        "completed": false
+        "completed": false,
+        "trigger": { "kind": "downloadKey", "nodeId": "node_proxy" }
       },
       {
         "id": "obj_exfiltrate_ledger",
         "title": "Exfiltrate Financial Ledger",
         "description": "Infiltrate Vault-DB (192.168.0.88), exfiltrate ledger_2084_corrupted.enc.",
-        "completed": false
+        "completed": false,
+        "trigger": { "kind": "downloadPayload", "nodeId": "node_vault" }
       },
       {
         "id": "obj_decrypt_ledger",
         "title": "Decrypt Corrupted Ledger",
         "description": "Run decrypt command using acquired cipher key.",
-        "completed": false
+        "completed": false,
+        "trigger": { "kind": "decrypt" }
       },
       {
         "id": "obj_overload_sentry",
         "title": "(Optional) Neutralize AI-SENTRY",
         "description": "Overload Sentry daemon at 192.168.0.99 to slash counter-trace speed and gain bonus bounty.",
         "completed": false,
-        "optional": true
+        "optional": true,
+        "trigger": { "kind": "breach", "nodeId": "node_sentry" }
       }
     ],
     "nodes": [

@@ -3,7 +3,12 @@ import { Box, Flex, Text, Progress, Badge, Button, HStack } from '@chakra-ui/rea
 import { AlertTriangle, Radio, ShieldAlert, Flame } from 'lucide-react';
 import { GameState, executeCommand } from '../game/commandParser';
 import { soundFx } from '../game/soundFx';
-import { PlayerInventoryUpgrades, DEFAULT_PLAYER_UPGRADES } from '../game/marketData';
+import {
+  PlayerInventoryUpgrades,
+  DEFAULT_PLAYER_UPGRADES,
+  STEALTH_TRACE_REDUCTION,
+  TRACE_PURGER_REDUCTION_PCT,
+} from '../game/marketData';
 
 interface TraceMeterProps {
   gameState: GameState;
@@ -21,7 +26,7 @@ export const TraceMeter: React.FC<TraceMeterProps> = ({
   const maxCharges = purgerTier;
   const chargesUsed = gameState.scrubChargesUsed || 0;
   const availableCharges = Math.max(0, maxCharges - chargesUsed);
-  const reductionAmount = [0, 20, 30, 40, 50][purgerTier] || 20;
+  const reductionAmount = TRACE_PURGER_REDUCTION_PCT[purgerTier] ?? 20;
 
   // Real-time trace tick effect when connected to remote nodes
   useEffect(() => {
@@ -30,7 +35,7 @@ export const TraceMeter: React.FC<TraceMeterProps> = ({
     const interval = setInterval(() => {
       setGameState((prev) => {
         if (prev.isCompleted || prev.isTraced || !prev.activeNodeIp) return prev;
-        const stealthReduction = (upgrades.stealth_cloak || 0) * 0.15;
+        const stealthReduction = STEALTH_TRACE_REDUCTION[upgrades.stealth_cloak || 0] ?? 0;
         const effectiveRate = Math.max(0.15, prev.traceRate * (1 - stealthReduction));
         const nextTrace = Math.min(100, Math.round((prev.trace + effectiveRate) * 10) / 10);
         const newlyTraced = nextTrace >= 100;

@@ -4,44 +4,63 @@ import { soundFx } from '../../game/soundFx';
 
 interface CipherBypassMinigameProps {
   timeLimit: number;
+  iceLevel?: number;
   onSuccess: () => void;
   onFailure: (reason: string) => void;
 }
 
 const HEX_POOL = ['1C', '55', '7A', 'BD', 'E9', 'FF'];
-const MATRIX_SIZE = 4;
 
-function generateSolvablePuzzle() {
-  const mat: string[][] = Array.from({ length: MATRIX_SIZE }, () =>
-    Array.from({ length: MATRIX_SIZE }, () => HEX_POOL[Math.floor(Math.random() * HEX_POOL.length)])
+// Matrix size and path length (number of cells in the required route) both scale with ICE tier.
+const MATRIX_SIZE_BY_ICE: Record<number, number> = { 1: 3, 2: 4, 3: 5 };
+const PATH_LEN_BY_ICE: Record<number, number> = { 1: 2, 2: 3, 3: 4 };
+
+// Alternates row-locked / col-locked picks starting in row mode (row 0), same as the fixed
+// 3-step path the original puzzle used, generalized to any matrix size and path length.
+function generateSolvablePuzzle(matrixSize: number, pathLen: number) {
+  const mat: string[][] = Array.from({ length: matrixSize }, () =>
+    Array.from({ length: matrixSize }, () => HEX_POOL[Math.floor(Math.random() * HEX_POOL.length)])
   );
 
-  // Step 1: Start at row 0, pick a col c0
-  const c0 = Math.floor(Math.random() * MATRIX_SIZE);
-  const t0 = mat[0][c0];
+  let r = 0;
+  let c = Math.floor(Math.random() * matrixSize);
+  const targetSeq: string[] = [mat[r][c]];
+  let isRowMode = true; // just picked a column within row 0
 
-  // Step 2: In col c0, pick a row r1 (1 to 3)
-  const r1 = Math.floor(Math.random() * (MATRIX_SIZE - 1)) + 1;
-  const t1 = mat[r1][c0];
-
-  // Step 3: In row r1, pick a col c2 != c0
-  const otherCols = [0, 1, 2, 3].filter((c) => c !== c0);
-  const c2 = otherCols[Math.floor(Math.random() * otherCols.length)];
-  const t2 = mat[r1][c2];
+  for (let step = 1; step < pathLen; step++) {
+    if (isRowMode) {
+      // now locked to column c, pick a different row
+      let nextR = Math.floor(Math.random() * matrixSize);
+      if (matrixSize > 1) while (nextR === r) nextR = Math.floor(Math.random() * matrixSize);
+      r = nextR;
+    } else {
+      // locked to row r, pick a different column
+      let nextC = Math.floor(Math.random() * matrixSize);
+      if (matrixSize > 1) while (nextC === c) nextC = Math.floor(Math.random() * matrixSize);
+      c = nextC;
+    }
+    isRowMode = !isRowMode;
+    targetSeq.push(mat[r][c]);
+  }
 
   return {
     matrix: mat,
-    targetSeq: [t0, t1, t2],
+    targetSeq,
     initialCursor: { r: 0, c: 0 },
   };
 }
 
 export const CipherBypassMinigame: React.FC<CipherBypassMinigameProps> = ({
   timeLimit,
+  iceLevel = 1,
   onSuccess,
   onFailure,
 }) => {
-  const [puzzle] = useState(() => generateSolvablePuzzle());
+  const matrixSize = MATRIX_SIZE_BY_ICE[iceLevel] ?? 4;
+  const pathLen = PATH_LEN_BY_ICE[iceLevel] ?? 3;
+  const maxAttempts = pathLen + 1;
+
+  const [puzzle] = useState(() => generateSolvablePuzzle(matrixSize, pathLen));
   const { matrix, targetSeq } = puzzle;
 
   const [isRowMode, setIsRowMode] = useState<boolean>(true);
@@ -107,7 +126,7 @@ export const CipherBypassMinigame: React.FC<CipherBypassMinigameProps> = ({
         return;
       }
 
-      if (newBuffer.length >= 4) {
+      if (newBuffer.length >= maxAttempts) {
         isFinishedRef.current = true;
         soundFx.playAccessDenied();
         onFailureRef.current('BUFFER EXHAUSTED: Failed to complete cipher path.');
@@ -118,14 +137,14 @@ export const CipherBypassMinigame: React.FC<CipherBypassMinigameProps> = ({
       if (isRowMode) {
         setActiveCol(c);
         setIsRowMode(false);
-        setCursor({ r: (r + 1) % MATRIX_SIZE, c });
+        setCursor({ r: (r + 1) % matrixSize, c });
       } else {
         setActiveRow(r);
         setIsRowMode(true);
-        setCursor({ r, c: (c + 1) % MATRIX_SIZE });
+        setCursor({ r, c: (c + 1) % matrixSize });
       }
     },
-    [activeRow, activeCol, buffer, isRowMode, matrix, targetSeq, usedCoords]
+    [activeRow, activeCol, buffer, isRowMode, matrix, targetSeq, usedCoords, matrixSize, maxAttempts]
   );
 
   // Keyboard navigation listener (Arrow keys, Space, Enter)
@@ -143,14 +162,14 @@ export const CipherBypassMinigame: React.FC<CipherBypassMinigameProps> = ({
 
           if (isRowMode) {
             newR = activeRow;
-            if (e.key === 'ArrowLeft') newC = (prev.c - 1 + MATRIX_SIZE) % MATRIX_SIZE;
-            if (e.key === 'ArrowRight') newC = (prev.c + 1) % MATRIX_SIZE;
-            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') newC = (prev.c + 1) % MATRIX_SIZE;
+            if (e.key === 'ArrowLeft') newC = (prev.c - 1 + matrixSize) % matrixSize;
+            if (e.key === 'ArrowRight') newC = (prev.c + 1) % matrixSize;
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') newC = (prev.c + 1) % matrixSize;
           } else {
             newC = activeCol;
-            if (e.key === 'ArrowUp') newR = (prev.r - 1 + MATRIX_SIZE) % MATRIX_SIZE;
-            if (e.key === 'ArrowDown') newR = (prev.r + 1) % MATRIX_SIZE;
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') newR = (prev.r + 1) % MATRIX_SIZE;
+            if (e.key === 'ArrowUp') newR = (prev.r - 1 + matrixSize) % matrixSize;
+            if (e.key === 'ArrowDown') newR = (prev.r + 1) % matrixSize;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') newR = (prev.r + 1) % matrixSize;
           }
 
           return { r: newR, c: newC };
@@ -163,7 +182,7 @@ export const CipherBypassMinigame: React.FC<CipherBypassMinigameProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeCol, activeRow, cursor.c, cursor.r, isRowMode, selectCell]);
+  }, [activeCol, activeRow, cursor.c, cursor.r, isRowMode, selectCell, matrixSize]);
 
   return (
     <Box p={4} bg="rgba(8, 10, 16, 0.95)" borderRadius="lg" border="1px solid #00f0ff">
@@ -195,7 +214,7 @@ export const CipherBypassMinigame: React.FC<CipherBypassMinigameProps> = ({
           </HStack>
         </Box>
         <Box p={2} bg="rgba(0, 255, 136, 0.08)" borderRadius="md" flex="1">
-          <Text fontSize="3xs" color="gray.400" fontFamily="monospace">BUFFER ({buffer.length}/4):</Text>
+          <Text fontSize="3xs" color="gray.400" fontFamily="monospace">BUFFER ({buffer.length}/{maxAttempts}):</Text>
           <HStack spacing={1}>
             {buffer.map((hex, i) => (
               <Badge key={i} colorScheme="green" fontSize="2xs">{hex}</Badge>
@@ -205,7 +224,7 @@ export const CipherBypassMinigame: React.FC<CipherBypassMinigameProps> = ({
       </Flex>
 
       {/* Matrix Grid */}
-      <SimpleGrid columns={4} spacing={1.5} mb={3}>
+      <SimpleGrid columns={matrixSize} spacing={1.5} mb={3}>
         {matrix.map((row, r) =>
           row.map((val, c) => {
             const isUsed = usedCoords.includes(`${r},${c}`);

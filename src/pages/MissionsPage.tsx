@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Target, Clock, Coins, Terminal, ArrowRight } from 'lucide-react';
-import { MISSIONS } from '../game/missionData';
+import { MISSIONS, Mission } from '../game/missionData';
 import { generateProceduralMission } from '../game/proceduralGenerator';
 import { GameState } from '../game/commandParser';
 import { soundFx } from '../game/soundFx';
@@ -50,6 +50,40 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ setGameState }) => {
             id: `inc_${Date.now()}`,
             type: 'system',
             text: `*** CONTRACT LOADED: ${newMission.title} [Target: ${newMission.targetCorp} (${newMission.targetSubnet})] ***`,
+            timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+          },
+        ],
+      }));
+    }
+    navigate('/');
+  };
+
+  const handleDeployMission = (m: Mission) => {
+    soundFx.playAccessGranted();
+    const missionCopy: Mission = JSON.parse(JSON.stringify(m));
+    if (setGameState) {
+      setGameState((prev) => ({
+        ...prev,
+        mission: missionCopy,
+        activeNodeIp: null,
+        discoveredNodeIps: [missionCopy.nodes[0].ip],
+        breachedNodeIps: [],
+        trace: 0,
+        isTraced: false,
+        isCompleted: false,
+        timeElapsedSeconds: 0,
+        scrubChargesUsed: 0,
+        inventory: {
+          ...prev.inventory,
+          keys: [],
+          downloadedFiles: [],
+        },
+        terminalLogs: [
+          ...prev.terminalLogs,
+          {
+            id: `deploy_${Date.now()}`,
+            type: 'system',
+            text: `*** CONTRACT LOADED: ${missionCopy.title} [Target: ${missionCopy.targetCorp} (${missionCopy.targetSubnet})] ***`,
             timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
           },
         ],
@@ -118,7 +152,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ setGameState }) => {
                 {m.codename}
               </Badge>
               <Badge
-                colorScheme={m.difficulty === 'Amber' ? 'yellow' : 'red'}
+                colorScheme={m.difficulty === 'Green' ? 'green' : m.difficulty === 'Amber' ? 'yellow' : 'red'}
                 fontSize="xs"
                 px={2.5}
                 py={0.5}
@@ -179,7 +213,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ setGameState }) => {
               fontSize="sm"
               w="100%"
               _hover={{ bg: '#38bdf8', transform: 'translateY(-1px)' }}
-              onClick={() => navigate('/')}
+              onClick={() => handleDeployMission(m)}
             >
               DEPLOY CYBERDECK UPLINK
             </Button>

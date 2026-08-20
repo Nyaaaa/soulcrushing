@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -19,7 +19,7 @@ import {
 } from '@chakra-ui/react';
 import { Terminal, Wrench, Shield, Cpu, Radio, Zap, Coins, Skull, RefreshCw, Play, Flame } from 'lucide-react';
 import { GameState } from '../game/commandParser';
-import { PlayerInventoryUpgrades } from '../game/marketData';
+import { PlayerInventoryUpgrades, UPGRADE_MAX_TIER } from '../game/marketData';
 import { ActiveExploitSession } from './minigames/MinigameOverlay';
 import { generateProceduralMission } from '../game/proceduralGenerator';
 import { soundFx } from '../game/soundFx';
@@ -44,6 +44,7 @@ export const DevWindow: React.FC<DevWindowProps> = ({
   onLaunchMinigameTest,
 }) => {
   const toast = useToast();
+  const [sandboxIceLevel, setSandboxIceLevel] = useState(1);
 
   const addCredits = (amount: number) => {
     soundFx.playAccessGranted();
@@ -75,13 +76,7 @@ export const DevWindow: React.FC<DevWindowProps> = ({
     soundFx.playAccessGranted();
     setWallet((prev) => ({
       ...prev,
-      upgrades: {
-        stealth_cloak: 4,
-        trace_purger: 4,
-        cpu_overclock: 4,
-        port_sniffer: 3,
-        decryption_accel: 3,
-      },
+      upgrades: { ...UPGRADE_MAX_TIER },
     }));
   };
 
@@ -144,13 +139,14 @@ export const DevWindow: React.FC<DevWindowProps> = ({
     toast({ title: 'NEW PROCEDURAL CONTRACT GENERATED', status: 'info', duration: 2000 });
   };
 
-  const testMinigame = (exploit: ActiveExploitSession['exploit']) => {
+  const testMinigame = (exploit: ActiveExploitSession['exploit'], iceLevel: number) => {
     if (onLaunchMinigameTest) {
       onLaunchMinigameTest({
         targetIp: '127.0.0.1',
         targetHostname: 'sandbox-test.local',
         exploit,
         port: 8080,
+        iceLevel,
       });
       onClose();
     }
@@ -231,12 +227,13 @@ export const DevWindow: React.FC<DevWindowProps> = ({
 
               <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3}>
                 {[
-                  { key: 'stealth_cloak', name: 'Stealth Cloak', max: 4, icon: <Shield size={14} color="#00ff88" /> },
-                  { key: 'trace_purger', name: 'Log Scrubber', max: 4, icon: <Flame size={14} color="#ff8800" /> },
-                  { key: 'cpu_overclock', name: 'CPU Overclock', max: 4, icon: <Cpu size={14} color="#00f0ff" /> },
-                  { key: 'port_sniffer', name: 'Port Sniffer', max: 3, icon: <Radio size={14} color="#ffb700" /> },
-                  { key: 'decryption_accel', name: 'Decryption Accel', max: 3, icon: <Zap size={14} color="#d946ef" /> },
+                  { key: 'stealth_cloak', name: 'Stealth Cloak', icon: <Shield size={14} color="#00ff88" /> },
+                  { key: 'trace_purger', name: 'Log Scrubber', icon: <Flame size={14} color="#ff8800" /> },
+                  { key: 'cpu_overclock', name: 'CPU Overclock', icon: <Cpu size={14} color="#00f0ff" /> },
+                  { key: 'port_sniffer', name: 'Port Sniffer', icon: <Radio size={14} color="#ffb700" /> },
+                  { key: 'decryption_accel', name: 'Decryption Accel', icon: <Zap size={14} color="#d946ef" /> },
                 ].map((item) => {
+                  const maxTier = UPGRADE_MAX_TIER[item.key as keyof PlayerInventoryUpgrades];
                   const currentTier = wallet.upgrades[item.key as keyof PlayerInventoryUpgrades] || 0;
                   return (
                     <Flex
@@ -254,7 +251,7 @@ export const DevWindow: React.FC<DevWindowProps> = ({
                             {item.name}
                           </Text>
                           <Text fontSize="3xs" color="cyan.400" fontFamily="monospace">
-                            Tier {currentTier} / {item.max}
+                            Tier {currentTier} / {maxTier}
                           </Text>
                         </Box>
                       </HStack>
@@ -266,7 +263,7 @@ export const DevWindow: React.FC<DevWindowProps> = ({
                           h="24px"
                           minW="24px"
                           isDisabled={currentTier <= 0}
-                          onClick={() => adjustUpgradeTier(item.key as keyof PlayerInventoryUpgrades, -1, item.max)}
+                          onClick={() => adjustUpgradeTier(item.key as keyof PlayerInventoryUpgrades, -1, maxTier)}
                         >
                           -
                         </Button>
@@ -276,8 +273,8 @@ export const DevWindow: React.FC<DevWindowProps> = ({
                           h="24px"
                           minW="24px"
                           colorScheme="teal"
-                          isDisabled={currentTier >= item.max}
-                          onClick={() => adjustUpgradeTier(item.key as keyof PlayerInventoryUpgrades, 1, item.max)}
+                          isDisabled={currentTier >= maxTier}
+                          onClick={() => adjustUpgradeTier(item.key as keyof PlayerInventoryUpgrades, 1, maxTier)}
                         >
                           +
                         </Button>
@@ -324,15 +321,33 @@ export const DevWindow: React.FC<DevWindowProps> = ({
 
             {/* Section 4: Minigame Direct Launcher Sandbox */}
             <Box p={3.5} bg="rgba(0, 0, 0, 0.4)" borderRadius="lg" border="1px solid rgba(255, 255, 255, 0.15)">
-              <Text fontSize="xs" fontWeight="bold" fontFamily="monospace" color="purple.300" mb={3}>
-                MINIGAME SANDBOX LAUNCHER (TEST ANY PUZZLE)
-              </Text>
+              <Flex justifyContent="space-between" alignItems="center" mb={3}>
+                <Text fontSize="xs" fontWeight="bold" fontFamily="monospace" color="purple.300">
+                  MINIGAME SANDBOX LAUNCHER (TEST ANY PUZZLE)
+                </Text>
+                <HStack spacing={1}>
+                  <Text fontSize="3xs" color="gray.400" fontFamily="monospace" mr={1}>
+                    ICE:
+                  </Text>
+                  {[1, 2, 3].map((tier) => (
+                    <Button
+                      key={tier}
+                      size="2xs"
+                      colorScheme="purple"
+                      variant={sandboxIceLevel === tier ? 'solid' : 'outline'}
+                      onClick={() => setSandboxIceLevel(tier)}
+                    >
+                      {tier}
+                    </Button>
+                  ))}
+                </HStack>
+              </Flex>
               <SimpleGrid columns={{ base: 2, sm: 4 }} spacing={2}>
                 <Button
                   size="xs"
                   colorScheme="purple"
                   leftIcon={<Play size={12} />}
-                  onClick={() => testMinigame('port_brute')}
+                  onClick={() => testMinigame('port_brute', sandboxIceLevel)}
                 >
                   Port Brute
                 </Button>
@@ -340,7 +355,7 @@ export const DevWindow: React.FC<DevWindowProps> = ({
                   size="xs"
                   colorScheme="purple"
                   leftIcon={<Play size={12} />}
-                  onClick={() => testMinigame('buffer_overflow')}
+                  onClick={() => testMinigame('buffer_overflow', sandboxIceLevel)}
                 >
                   Buffer Overflow
                 </Button>
@@ -348,7 +363,7 @@ export const DevWindow: React.FC<DevWindowProps> = ({
                   size="xs"
                   colorScheme="purple"
                   leftIcon={<Play size={12} />}
-                  onClick={() => testMinigame('cipher_bypass')}
+                  onClick={() => testMinigame('cipher_bypass', sandboxIceLevel)}
                 >
                   Cipher Bypass
                 </Button>
@@ -356,7 +371,7 @@ export const DevWindow: React.FC<DevWindowProps> = ({
                   size="xs"
                   colorScheme="purple"
                   leftIcon={<Play size={12} />}
-                  onClick={() => testMinigame('sentry_overload')}
+                  onClick={() => testMinigame('sentry_overload', sandboxIceLevel)}
                 >
                   Sentry Overload
                 </Button>

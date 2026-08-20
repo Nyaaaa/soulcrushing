@@ -30,12 +30,20 @@ export interface NetworkNode {
   connectedTo: string[]; // Connected node IDs
 }
 
+export type ObjectiveTrigger =
+  | { kind: 'scan' }
+  | { kind: 'breach'; nodeId: string }
+  | { kind: 'downloadKey'; nodeId: string }
+  | { kind: 'downloadPayload'; nodeId: string }
+  | { kind: 'decrypt' };
+
 export interface MissionObjective {
   id: string;
   title: string;
   description: string;
   completed: boolean;
   optional?: boolean;
+  trigger: ObjectiveTrigger;
 }
 
 export interface Mission {

@@ -15,13 +15,14 @@ import { PortBruteMinigame } from './PortBruteMinigame';
 import { BufferOverflowMinigame } from './BufferOverflowMinigame';
 import { CipherBypassMinigame } from './CipherBypassMinigame';
 import { SentryOverloadMinigame } from './SentryOverloadMinigame';
-import { PlayerInventoryUpgrades } from '../../game/marketData';
+import { PlayerInventoryUpgrades, CPU_OVERCLOCK_BONUS_SECONDS } from '../../game/marketData';
 
 export interface ActiveExploitSession {
   targetIp: string;
   targetHostname: string;
   exploit: 'port_brute' | 'buffer_overflow' | 'cipher_bypass' | 'sentry_overload';
   port: number;
+  iceLevel: number;
 }
 
 interface MinigameOverlayProps {
@@ -41,16 +42,18 @@ export const MinigameOverlay: React.FC<MinigameOverlayProps> = ({
 }) => {
   if (!session) return null;
 
-  // Base time limits with CPU Overclock modifier
-  const cpuBonus = (upgrades.cpu_overclock || 0) * 4; // +4s per tier
+  // Base time limits shrink slightly at higher ICE tiers, offset by the CPU Overclock bonus
+  const cpuBonus = CPU_OVERCLOCK_BONUS_SECONDS[upgrades.cpu_overclock || 0] ?? 0;
+  const iceLevel = session.iceLevel || 1;
+  const iceTimePenalty = (iceLevel - 1) * 2;
   const baseTimes: Record<string, number> = {
-    port_brute: 15 + cpuBonus,
-    buffer_overflow: 18 + cpuBonus,
-    cipher_bypass: 20 + cpuBonus,
-    sentry_overload: 16 + cpuBonus,
+    port_brute: 15 + cpuBonus - iceTimePenalty,
+    buffer_overflow: 18 + cpuBonus - iceTimePenalty,
+    cipher_bypass: 20 + cpuBonus - iceTimePenalty,
+    sentry_overload: 16 + cpuBonus - iceTimePenalty,
   };
 
-  const timeLimit = baseTimes[session.exploit] || 15;
+  const timeLimit = Math.max(6, baseTimes[session.exploit] || 15);
 
   const renderMinigame = () => {
     switch (session.exploit) {
@@ -58,6 +61,7 @@ export const MinigameOverlay: React.FC<MinigameOverlayProps> = ({
         return (
           <PortBruteMinigame
             timeLimit={timeLimit}
+            iceLevel={iceLevel}
             onSuccess={() => onSuccess(session.targetIp)}
             onFailure={onFailure}
           />
@@ -66,6 +70,7 @@ export const MinigameOverlay: React.FC<MinigameOverlayProps> = ({
         return (
           <BufferOverflowMinigame
             timeLimit={timeLimit}
+            iceLevel={iceLevel}
             onSuccess={() => onSuccess(session.targetIp)}
             onFailure={onFailure}
           />
@@ -74,6 +79,7 @@ export const MinigameOverlay: React.FC<MinigameOverlayProps> = ({
         return (
           <CipherBypassMinigame
             timeLimit={timeLimit}
+            iceLevel={iceLevel}
             onSuccess={() => onSuccess(session.targetIp)}
             onFailure={onFailure}
           />
@@ -82,6 +88,7 @@ export const MinigameOverlay: React.FC<MinigameOverlayProps> = ({
         return (
           <SentryOverloadMinigame
             timeLimit={timeLimit}
+            iceLevel={iceLevel}
             onSuccess={() => onSuccess(session.targetIp)}
             onFailure={onFailure}
           />

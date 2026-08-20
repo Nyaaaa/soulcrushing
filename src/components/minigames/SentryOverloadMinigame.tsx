@@ -4,17 +4,27 @@ import { soundFx } from '../../game/soundFx';
 
 interface SentryOverloadMinigameProps {
   timeLimit: number;
+  iceLevel?: number;
   onSuccess: () => void;
   onFailure: (reason: string) => void;
 }
 
+const SWEEP_SPEED_BY_ICE: Record<number, number> = { 1: 0.85, 2: 1.15, 3: 1.6 };
+const WINDOW_WIDTH_BY_ICE: Record<number, number> = { 1: 40, 2: 30, 3: 20 };
+const HITS_REQUIRED_BY_ICE: Record<number, number> = { 1: 3, 2: 3, 3: 4 };
+
 export const SentryOverloadMinigame: React.FC<SentryOverloadMinigameProps> = ({
   timeLimit,
+  iceLevel = 1,
   onSuccess,
   onFailure,
 }) => {
+  const sweepSpeed = SWEEP_SPEED_BY_ICE[iceLevel] ?? 1.15;
+  const windowWidth = WINDOW_WIDTH_BY_ICE[iceLevel] ?? 30;
+  const hitsRequired = HITS_REQUIRED_BY_ICE[iceLevel] ?? 3;
+
   const [pulsePosition, setPulsePosition] = useState(0); // 0 to 100
-  const [hits, setHits] = useState(0); // Need 3 hits
+  const [hits, setHits] = useState(0);
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const [justHit, setJustHit] = useState(false);
 
@@ -27,9 +37,9 @@ export const SentryOverloadMinigame: React.FC<SentryOverloadMinigameProps> = ({
   onSuccessRef.current = onSuccess;
   onFailureRef.current = onFailure;
 
-  // Resonance sweet spot window (35% to 65%)
-  const SWEET_SPOT_START = 35;
-  const SWEET_SPOT_END = 65;
+  // Resonance sweet spot window, centered at 50% and narrowing with ICE tier
+  const SWEET_SPOT_START = 50 - windowWidth / 2;
+  const SWEET_SPOT_END = 50 + windowWidth / 2;
 
   const endTimeRef = useRef(Date.now() + timeLimit * 1000);
 
@@ -43,13 +53,13 @@ export const SentryOverloadMinigame: React.FC<SentryOverloadMinigameProps> = ({
       if (isFinishedRef.current) return;
 
       if (currentDir === 'right') {
-        currentPos += 1.15;
+        currentPos += sweepSpeed;
         if (currentPos >= 100) {
           currentPos = 100;
           currentDir = 'left';
         }
       } else {
-        currentPos -= 1.15;
+        currentPos -= sweepSpeed;
         if (currentPos <= 0) {
           currentPos = 0;
           currentDir = 'right';
@@ -63,7 +73,7 @@ export const SentryOverloadMinigame: React.FC<SentryOverloadMinigameProps> = ({
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, []);
+  }, [sweepSpeed]);
 
   // Robust countdown timer
   useEffect(() => {
@@ -98,7 +108,7 @@ export const SentryOverloadMinigame: React.FC<SentryOverloadMinigameProps> = ({
       hitsRef.current = nextHits;
       setHits(nextHits);
 
-      if (nextHits >= 3) {
+      if (nextHits >= hitsRequired) {
         isFinishedRef.current = true;
         soundFx.playBreach();
         onSuccessRef.current();
@@ -108,7 +118,7 @@ export const SentryOverloadMinigame: React.FC<SentryOverloadMinigameProps> = ({
       soundFx.playAccessDenied();
       onFailureRef.current('PHASE DESYNC: Frequency pulse missed resonance window.');
     }
-  }, []);
+  }, [hitsRequired, SWEET_SPOT_START, SWEET_SPOT_END]);
 
   // Window key listener for Space, Enter, ArrowDown
   useEffect(() => {
@@ -193,7 +203,7 @@ export const SentryOverloadMinigame: React.FC<SentryOverloadMinigameProps> = ({
           SYNCS REQUIRED:
         </Text>
         <HStack spacing={1.5}>
-          {[1, 2, 3].map((h) => (
+          {Array.from({ length: hitsRequired }, (_, i) => i + 1).map((h) => (
             <Badge
               key={h}
               colorScheme={h <= hits ? 'green' : 'gray'}
