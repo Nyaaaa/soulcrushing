@@ -1,0 +1,91 @@
+{
+  "gameSaves": {
+    "save_test_op_null_dawn": {
+      "id": "save_test_op_null_dawn",
+      "playerId": "test_op",
+      "missionId": "null_dawn",
+      "stage": "active",
+      "trace": 25,
+      "discoveredNodes": "[\"192.168.0.1\",\"192.168.0.14\"]",
+      "isCompleted": false,
+      "updatedAt": "2026-08-17T13:47:48.780Z"
+    }
+  },
+  "leaderboard": [
+    {
+      "id": "seed_1",
+      "playerHandle": "ZERO_COOL",
+      "missionId": "null_dawn",
+      "completionTimeSeconds": 42,
+      "tracePercent": 14,
+      "score": 18450,
+      "createdAt": "2026-08-17T11:47:17.503Z"
+    },
+    {
+      "id": "seed_2",
+      "playerHandle": "ACID_BURN",
+      "missionId": "null_dawn",
+      "completionTimeSeconds": 58,
+      "tracePercent": 22,
+      "score": 16200,
+      "createdAt": "2026-08-17T08:47:17.504Z"
+    },
+    {
+      "id": "seed_3",
+      "playerHandle": "GIBSON_PHANTOM",
+      "missionId": "null_dawn",
+      "completionTimeSeconds": 79,
+      "tracePercent": 38,
+      "score": 13800,
+      "createdAt": "2026-08-16T13:47:17.504Z"
+    },
+    {
+      "id": "seed_4",
+      "playerHandle": "NEO_V4",
+      "missionId": "null_dawn",
+      "completionTimeSeconds": 95,
+      "tracePercent": 54,
+      "score": 11400,
+      "createdAt": "2026-08-15T13:47:17.504Z"
+    },
+    {
+      "id": "seed_5",
+      "playerHandle": "CRASH_OVERRIDE",
+      "missionId": "null_dawn",
+      "completionTimeSeconds": 112,
+      "tracePercent": 68,
+      "score": 9800,
+      "createdAt": "2026-08-14T13:47:17.504Z"
+    },
+    {
+      "playerHandle": "CYBER_SHADOW",
+      "missionId": "null_dawn",
+      "completionTimeSeconds": 35,
+      "tracePercent": 8,
+      "score": 19500,
+      "id": "score_1786974468820_6i28m",
+      "createdAt": "2026-08-17T13:47:48.820Z"
+    },
+    {
+      "playerHandle": "TEST_OP",
+      "missionId": "incursion_test",
+      "completionTimeSeconds": 55,
+      "tracePercent": 20,
+      "score": 16000,
+      "id": "score_1786976621434_bdorf",
+      "createdAt": "2026-08-17T14:23:41.434Z"
+    }
+  ],
+  "wallets": {
+    "operative_alpha": {
+      "credits": 500,
+      "upgrades": {
+        "stealth_cloak": 2,
+        "cpu_overclock": 2,
+        "port_sniffer": 1,
+        "decryption_accel": 1,
+        "trace_purger": 0
+      }
+    }
+  }
+}

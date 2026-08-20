@@ -1,0 +1,45 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Player {
+  id        String             @id @default(cuid())
+  handle    String             @unique
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  saves     GameSave[]
+  scores    LeaderboardEntry[]
+}
+
+model GameSave {
+  id              String   @id @default(cuid())
+  playerId        String
+  player          Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  missionId       String
+  stage           String   @default("recon")
+  trace           Int      @default(0)
+  discoveredNodes String   @default("[]") // JSON string of node IDs
+  breachedNodes   String   @default("[]") // JSON string of node IDs
+  inventory       String   @default("[]") // JSON string of tools/keys
+  exfiltratedData String   @default("[]") // JSON string of downloaded files
+  objectiveState  String   @default("{}") // JSON string of completed objectives
+  isCompleted     Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}
+
+model LeaderboardEntry {
+  id                    String   @id @default(cuid())
+  playerId              String
+  player                Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerHandle          String
+  missionId             String
+  completionTimeSeconds Int
+  tracePercent          Int
+  score                 Int
+  createdAt             DateTime @default(now())
+}

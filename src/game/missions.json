@@ -1,0 +1,197 @@
+[
+  {
+    "id": "null_dawn",
+    "title": "Operation Null-Dawn",
+    "codename": "NULL-DAWN-84",
+    "targetCorp": "Asphalt-Core Financials",
+    "targetSubnet": "192.168.0.0/24",
+    "difficulty": "Amber",
+    "reward": 12500,
+    "timeLimitSeconds": 180,
+    "briefing": [
+      "OPERATIVE BRIEFING // PRIORITY 1",
+      "Asphalt-Core Financials automated a hard blackout following an insider whistleblower leak.",
+      "Your objective is to infiltrate their internal subnet (192.168.0.0/24), bypass perimeter defenses, breach their authentication proxy to acquire the decryption token, and exfiltrate the classified ledger: 'ledger_2084_corrupted.enc'.",
+      "WARNING: Automated counter-trace daemons are active. If trace reaches 100%, cyberdeck emergency disconnect will trigger and mission will fail."
+    ],
+    "objectives": [
+      {
+        "id": "obj_scan_gateway",
+        "title": "Map Perimeter Gateway",
+        "description": "Scan subnet and probe the gateway node at 192.168.0.1.",
+        "completed": false
+      },
+      {
+        "id": "obj_breach_gateway",
+        "title": "Breach Gateway & Locate Auth Proxy",
+        "description": "Deploy port_brute against 192.168.0.1 and read routing logs to discover 192.168.0.14.",
+        "completed": false
+      },
+      {
+        "id": "obj_extract_key",
+        "title": "Acquire Vault Decryption Key",
+        "description": "Infiltrate Auth-Proxy (192.168.0.14) and download vault_access.key.",
+        "completed": false
+      },
+      {
+        "id": "obj_exfiltrate_ledger",
+        "title": "Exfiltrate Financial Ledger",
+        "description": "Infiltrate Vault-DB (192.168.0.88), exfiltrate ledger_2084_corrupted.enc.",
+        "completed": false
+      },
+      {
+        "id": "obj_decrypt_ledger",
+        "title": "Decrypt Corrupted Ledger",
+        "description": "Run decrypt command using acquired cipher key.",
+        "completed": false
+      },
+      {
+        "id": "obj_overload_sentry",
+        "title": "(Optional) Neutralize AI-SENTRY",
+        "description": "Overload Sentry daemon at 192.168.0.99 to slash counter-trace speed and gain bonus bounty.",
+        "completed": false,
+        "optional": true
+      }
+    ],
+    "nodes": [
+      {
+        "id": "node_gateway",
+        "ip": "192.168.0.1",
+        "hostname": "gw-01.asphalt.core",
+        "type": "gateway",
+        "iceLevel": 1,
+        "description": "Edge perimeter router. Manages ingress and egress traffic.",
+        "discovered": true,
+        "breached": false,
+        "coordinates": { "x": 15, "y": 50 },
+        "connectedTo": ["node_proxy"],
+        "ports": [
+          {
+            "port": 22,
+            "service": "OpenSSH 7.4 (Vulnerable Key Exchange)",
+            "exploit": "port_brute",
+            "status": "open"
+          },
+          {
+            "port": 80,
+            "service": "HTTP Gateway Console",
+            "exploit": "buffer_overflow",
+            "status": "filtered"
+          }
+        ],
+        "files": [
+          {
+            "name": "routing.log",
+            "size": "4.2 KB",
+            "content": "[ROUTING TABLE]\n192.168.0.1 -> PRIMARY GW\n192.168.0.14 -> AUTH-PROXY (Token: AS-AUTH-9941)\nSTATUS: PROXY ACTIVE ON SUBNET B"
+          },
+          {
+            "name": "motd.txt",
+            "size": "1.1 KB",
+            "content": "=== ASPHALT-CORE SECURE GATEWAY ===\nUNAUTHORIZED ACCESS WILL RESULT IN IMMEDIATE BLACKOUT TRACE.\nOPERATOR ID: SYSADM_04"
+          }
+        ]
+      },
+      {
+        "id": "node_proxy",
+        "ip": "192.168.0.14",
+        "hostname": "auth.asphalt.internal",
+        "type": "proxy",
+        "iceLevel": 2,
+        "description": "Internal authentication server and access controller.",
+        "discovered": false,
+        "breached": false,
+        "coordinates": { "x": 45, "y": 30 },
+        "connectedTo": ["node_vault", "node_sentry"],
+        "ports": [
+          {
+            "port": 443,
+            "service": "Kerberos SSL Proxy",
+            "exploit": "cipher_bypass",
+            "status": "open"
+          },
+          {
+            "port": 8080,
+            "service": "REST Auth Controller",
+            "exploit": "buffer_overflow",
+            "status": "open"
+          }
+        ],
+        "files": [
+          {
+            "name": "vault_access.key",
+            "size": "0.8 KB",
+            "content": "KEY_ID: 0x9FA884B2CC11\nALG: AES-256-GCM\nPURPOSE: VAULT_DB_PRIMARY_DECRYPT\nISSUER: CORPO_SEC_DAEMON"
+          },
+          {
+            "name": "subnet_memo.txt",
+            "size": "2.5 KB",
+            "content": "MEMORANDUM // EYES ONLY\nFinancial records stored in Vault-DB (192.168.0.88).\nAll transactions above 1,000,000 credits quarantined.\nAI-SENTRY watchdog at 192.168.0.99 is armed."
+          }
+        ]
+      },
+      {
+        "id": "node_vault",
+        "ip": "192.168.0.88",
+        "hostname": "vault-main.asphalt.db",
+        "type": "database",
+        "iceLevel": 3,
+        "description": "Reinforced secure datavault hosting encrypted corporate assets.",
+        "discovered": false,
+        "breached": false,
+        "coordinates": { "x": 80, "y": 35 },
+        "connectedTo": [],
+        "ports": [
+          {
+            "port": 5432,
+            "service": "NeuralSQL Enterprise (Unpatched Pointer Leak)",
+            "exploit": "buffer_overflow",
+            "status": "open"
+          }
+        ],
+        "files": [
+          {
+            "name": "ledger_2084_corrupted.enc",
+            "size": "18.4 KB",
+            "content": "--- BEGIN ENCRYPTED FINANCIAL LEDGER ---\nU2FsdGVkX1/9v7m2kX89aQxL...\n[EXTRACTED ASSETS: 9,420,000,000 NEO-CREDITS]\nTRANSACTION: CYBERSHADOW PROTOCOL -> SHELL ACCT 0x77F89B\nSTATUS: EMBEZZLED\n--- END ENCRYPTED FINANCIAL LEDGER ---",
+            "encrypted": true,
+            "requiredKey": "0x9FA884B2CC11",
+            "isTargetPayload": true
+          },
+          {
+            "name": "db_schema.sql",
+            "size": "5.1 KB",
+            "content": "CREATE TABLE accounts (id UUID, balance NUMERIC, owner_hash VARCHAR(64));\nCREATE TABLE covert_transfers (batch_id INT, destination VARCHAR(256));"
+          }
+        ]
+      },
+      {
+        "id": "node_sentry",
+        "ip": "192.168.0.99",
+        "hostname": "sentry-watchdog.asphalt.sec",
+        "type": "sentry",
+        "iceLevel": 3,
+        "description": "Autonomous trace hunter daemon. Accelerates countermeasure frequency.",
+        "discovered": false,
+        "breached": false,
+        "coordinates": { "x": 65, "y": 75 },
+        "connectedTo": [],
+        "ports": [
+          {
+            "port": 9000,
+            "service": "Watchdog Neural Sentry",
+            "exploit": "sentry_overload",
+            "status": "open"
+          }
+        ],
+        "files": [
+          {
+            "name": "trace_heuristics.cfg",
+            "size": "1.4 KB",
+            "content": "TARGET_VECTOR: INCOMING_SHELL\nHOP_ANALYSIS: ENABLED\nCOUNTER_PULSE_FREQUENCY: 3500ms\nICE_STATUS: ACTIVE"
+          }
+        ]
+      }
+    ]
+  }
+]
