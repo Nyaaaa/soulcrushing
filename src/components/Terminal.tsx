@@ -104,8 +104,15 @@ export const Terminal: React.FC<TerminalProps> = ({ gameState, setGameState, upg
     }
   };
 
+  const refocusInput = () => {
+    // Chakra's modal has no element to return focus to (we blurred the input on open),
+    // so without this the user has to click the terminal again after every minigame.
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
   const handleMinigameSuccess = (targetIp: string) => {
     setActiveMinigame(null);
+    refocusInput();
     soundFx.playBreach();
 
     const node = gameState.mission.nodes.find((n) => n.ip === targetIp);
@@ -125,8 +132,7 @@ export const Terminal: React.FC<TerminalProps> = ({ gameState, setGameState, upg
     }
 
     const updatedObjectives = gameState.mission.objectives.map((obj) => {
-      if (obj.id === 'obj_breach_gateway' && node?.type === 'gateway') return { ...obj, completed: true };
-      if (obj.id === 'obj_overload_sentry' && node?.type === 'sentry') return { ...obj, completed: true };
+      if (obj.trigger.kind === 'breach' && obj.trigger.nodeId === node?.id) return { ...obj, completed: true };
       return obj;
     });
 
@@ -150,6 +156,7 @@ export const Terminal: React.FC<TerminalProps> = ({ gameState, setGameState, upg
 
   const handleMinigameFailure = (reason: string) => {
     setActiveMinigame(null);
+    refocusInput();
     soundFx.playAccessDenied();
 
     setGameState((prev) => ({
@@ -417,7 +424,10 @@ export const Terminal: React.FC<TerminalProps> = ({ gameState, setGameState, upg
         upgrades={upgrades}
         onSuccess={handleMinigameSuccess}
         onFailure={handleMinigameFailure}
-        onCancel={() => setActiveMinigame(null)}
+        onCancel={() => {
+          setActiveMinigame(null);
+          refocusInput();
+        }}
       />
     </Box>
   );

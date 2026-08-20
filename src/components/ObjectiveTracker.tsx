@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, Text, VStack, HStack, Badge, Checkbox } from '@chakra-ui/react';
+import { Box, Flex, Text, VStack, HStack, Badge } from '@chakra-ui/react';
 import { Target, CheckCircle2, Circle } from 'lucide-react';
 import { MissionObjective } from '../game/missionData';
 

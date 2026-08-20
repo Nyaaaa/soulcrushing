@@ -1,7 +1,7 @@
 import { NetworkNode, Mission, MISSIONS } from './missionData';
 import { soundFx } from './soundFx';
 import { generateProceduralMission } from './proceduralGenerator';
-import { PlayerInventoryUpgrades } from './marketData';
+import { PlayerInventoryUpgrades, TRACE_PURGER_REDUCTION_PCT, DECRYPTION_ACCEL_BONUS_PCT } from './marketData';
 import { ActiveExploitSession } from '../components/minigames/MinigameOverlay';
 
 export interface TerminalOutputLine {
@@ -19,7 +19,7 @@ export interface GameState {
   inventory: {
     exploits: string[];
     keys: string[];
-    downloadedFiles: { name: string; content: string; decrypted?: boolean }[];
+    downloadedFiles: { name: string; content: string; decrypted?: boolean; isTargetPayload?: boolean }[];
   };
   trace: number;
   traceRate: number;
@@ -180,8 +180,7 @@ export function executeCommand(
         break;
       }
 
-      const reductionTable = [0, 20, 30, 40, 50];
-      const reduction = reductionTable[purgerTier] || 20;
+      const reduction = TRACE_PURGER_REDUCTION_PCT[purgerTier] ?? 20;
       const newTrace = Math.max(0, Math.round((state.trace - reduction) * 10) / 10);
 
       soundFx.playAccessGranted();
@@ -338,7 +337,7 @@ export function executeCommand(
       helper('success', `Scan complete. Found ${updatedDiscovered.length} active node(s):\n${scanResults}`);
 
       const updatedObjectives = state.mission.objectives.map((obj) =>
-        obj.id === 'obj_scan_gateway' ? { ...obj, completed: true } : obj
+        obj.trigger.kind === 'scan' ? { ...obj, completed: true } : obj
       );
 
       setState((prev) => ({
@@ -434,6 +433,7 @@ export function executeCommand(
           targetHostname: targetNode.hostname,
           exploit: exploit as any,
           port: matchingPort.port,
+          iceLevel: targetNode.iceLevel,
         });
         return;
       }
@@ -577,7 +577,10 @@ export function executeCommand(
       helper('system', `Transmitting packet stream for "${filename}" [${file.size}]...`);
       helper('success', `DOWNLOAD COMPLETE: Exfiltrated "${filename}" to /cyberdeck/loot/.`);
 
-      const newDownloaded = [...state.inventory.downloadedFiles, { name: file.name, content: file.content }];
+      const newDownloaded = [
+        ...state.inventory.downloadedFiles,
+        { name: file.name, content: file.content, isTargetPayload: file.isTargetPayload },
+      ];
       const newKeys = [...state.inventory.keys];
 
       if (filename.includes('key')) {
@@ -588,8 +591,12 @@ export function executeCommand(
       }
 
       const updatedObjectives = state.mission.objectives.map((obj) => {
-        if (obj.id === 'obj_extract_key' && filename.includes('key')) return { ...obj, completed: true };
-        if (obj.id === 'obj_exfiltrate_ledger' && file.isTargetPayload) return { ...obj, completed: true };
+        if (obj.trigger.kind === 'downloadKey' && obj.trigger.nodeId === node?.id && filename.includes('key')) {
+          return { ...obj, completed: true };
+        }
+        if (obj.trigger.kind === 'downloadPayload' && obj.trigger.nodeId === node?.id && file.isTargetPayload) {
+          return { ...obj, completed: true };
+        }
         return obj;
       });
 
@@ -634,13 +641,30 @@ export function executeCommand(
       }
 
       const keyUsed = state.inventory.keys[0];
+      soundFx.playMissionComplete();
+      helper('system', `Running Neural Cipher Engine with Key [${keyUsed}]...`);
+
+      if (!file.isTargetPayload) {
+        helper(
+          'success',
+          `DECRYPTION COMPLETE: "${filename}" decoded, but it isn't the mission's target payload — no bounty awarded. Decrypt the exfiltrated target file to complete the contract.`
+        );
+        const updatedFiles = state.inventory.downloadedFiles.map((f) =>
+          f.name === filename ? { ...f, decrypted: true } : f
+        );
+        setState((prev) => ({
+          ...prev,
+          inventory: { ...prev.inventory, downloadedFiles: updatedFiles },
+          terminalLogs: [...prev.terminalLogs, ...newLogs],
+        }));
+        return;
+      }
+
       const cryptoTier = upgrades?.decryption_accel || 0;
-      const bonusPct = cryptoTier * 15;
+      const bonusPct = DECRYPTION_ACCEL_BONUS_PCT[cryptoTier] ?? 0;
       const baseReward = state.mission.reward;
       const totalPayout = baseReward + Math.floor(baseReward * (bonusPct / 100));
 
-      soundFx.playMissionComplete();
-      helper('system', `Running Neural Cipher Engine with Key [${keyUsed}]...`);
       helper(
         'success',
         [
@@ -673,7 +697,7 @@ export function executeCommand(
       );
 
       const updatedObjectives = state.mission.objectives.map((obj) =>
-        obj.id === 'obj_decrypt_ledger' ? { ...obj, completed: true } : obj
+        obj.trigger.kind === 'decrypt' ? { ...obj, completed: true } : obj
       );
 
       setState((prev) => ({

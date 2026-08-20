@@ -56,10 +56,10 @@ export const CYBERDECK_UPGRADES: CyberdeckUpgrade[] = [
     icon: 'Cpu',
     description: 'Boosts cyberdeck clock cycles to slow down puzzle timers and extend exploit deployment windows.',
     tiers: [
-      { tier: 1, name: 'Liquid Helium Heat Sink', cost: 3000, effect: '+25% time window during hacking minigames' },
-      { tier: 2, name: 'Sub-Zero Dual Core Booster', cost: 7500, effect: '+50% time window during hacking minigames' },
-      { tier: 3, name: 'Tachyon Overclock Chipset', cost: 16000, effect: '+75% time window during hacking minigames' },
-      { tier: 4, name: 'Zero-Point Neural Hyperclock', cost: 32000, effect: '+100% time window during hacking minigames' },
+      { tier: 1, name: 'Liquid Helium Heat Sink', cost: 3000, effect: '+4s exploit timer during hacking minigames' },
+      { tier: 2, name: 'Sub-Zero Dual Core Booster', cost: 7500, effect: '+8s exploit timer during hacking minigames' },
+      { tier: 3, name: 'Tachyon Overclock Chipset', cost: 16000, effect: '+12s exploit timer during hacking minigames' },
+      { tier: 4, name: 'Zero-Point Neural Hyperclock', cost: 32000, effect: '+16s exploit timer during hacking minigames' },
     ],
   },
   {
@@ -95,3 +95,19 @@ export const DEFAULT_PLAYER_UPGRADES: PlayerInventoryUpgrades = {
   port_sniffer: 0,
   decryption_accel: 0,
 };
+
+// Numeric source of truth for upgrade effects, indexed by tier (index 0 = untiered/no upgrade).
+// The prose `effect` strings above are for display only — everything that actually computes
+// a bonus should read from these tables instead of re-hardcoding the numbers.
+export const STEALTH_TRACE_REDUCTION = [0, 0.15, 0.3, 0.45, 0.6]; // fraction shaved off trace accumulation rate
+export const TRACE_PURGER_REDUCTION_PCT = [0, 20, 30, 40, 50]; // % of current trace removed by "scrub"
+export const CPU_OVERCLOCK_BONUS_SECONDS = [0, 4, 8, 12, 16]; // flat seconds added to minigame timers
+export const DECRYPTION_ACCEL_BONUS_PCT = [0, 15, 30, 50]; // % bonus credits on decrypt payout
+
+export const UPGRADE_MAX_TIER: Record<keyof PlayerInventoryUpgrades, number> = CYBERDECK_UPGRADES.reduce(
+  (acc, upgrade) => {
+    acc[upgrade.id as keyof PlayerInventoryUpgrades] = upgrade.tiers.length;
+    return acc;
+  },
+  {} as Record<keyof PlayerInventoryUpgrades, number>
+);

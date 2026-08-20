@@ -16,20 +16,30 @@ import { soundFx } from '../../game/soundFx';
 
 interface BufferOverflowMinigameProps {
   timeLimit: number;
+  iceLevel?: number;
   onSuccess: () => void;
   onFailure: (reason: string) => void;
 }
 
+const TOLERANCE_BY_ICE: Record<number, number> = { 1: 7, 2: 5, 3: 3 };
+
 export const BufferOverflowMinigame: React.FC<BufferOverflowMinigameProps> = ({
   timeLimit,
+  iceLevel = 1,
   onSuccess,
   onFailure,
 }) => {
+  const tolerance = TOLERANCE_BY_ICE[iceLevel] ?? 5;
+  const requiresCanary = iceLevel >= 3;
+
   const [targetOffset] = useState(() => Math.floor(Math.random() * 60) + 20); // 20 to 80
   const [currentOffset, setCurrentOffset] = useState(50);
+  const [targetCanaryOffset] = useState(() => Math.floor(Math.random() * 60) + 20);
+  const [currentCanaryOffset, setCurrentCanaryOffset] = useState(50);
   const [timeLeft, setTimeLeft] = useState(timeLimit);
 
   const offsetRef = useRef(50);
+  const canaryOffsetRef = useRef(50);
   const isFinishedRef = useRef(false);
 
   const onSuccessRef = useRef(onSuccess);
@@ -62,17 +72,25 @@ export const BufferOverflowMinigame: React.FC<BufferOverflowMinigameProps> = ({
   const handleInject = useCallback(() => {
     if (isFinishedRef.current || Date.now() < mountTimeRef.current) return;
     const diff = Math.abs(offsetRef.current - targetOffset);
+    const canaryDiff = Math.abs(canaryOffsetRef.current - targetCanaryOffset);
+    const eipAligned = diff <= tolerance;
+    const canaryAligned = !requiresCanary || canaryDiff <= tolerance;
 
-    if (diff <= 5) {
+    if (eipAligned && canaryAligned) {
       isFinishedRef.current = true;
       soundFx.playBreach();
       onSuccessRef.current();
     } else {
       isFinishedRef.current = true;
       soundFx.playAccessDenied();
-      onFailureRef.current(`SEGFAULT: Invalid EIP offset ${offsetRef.current} (Target was ${targetOffset}). Stack corrupted.`);
+      const failedField = !eipAligned ? 'EIP' : 'CANARY';
+      onFailureRef.current(
+        `SEGFAULT: Invalid ${failedField} offset alignment (EIP ${offsetRef.current}/${targetOffset}${
+          requiresCanary ? `, CANARY ${canaryOffsetRef.current}/${targetCanaryOffset}` : ''
+        }). Stack corrupted.`
+      );
     }
-  }, [targetOffset]);
+  }, [targetOffset, targetCanaryOffset, tolerance, requiresCanary]);
 
   // Arrow key controls for slider
   useEffect(() => {
@@ -127,7 +145,7 @@ export const BufferOverflowMinigame: React.FC<BufferOverflowMinigameProps> = ({
       <Box mb={4} p={3} bg="rgba(0, 0, 0, 0.4)" borderRadius="md" border="1px solid rgba(255, 255, 255, 0.1)">
         <Flex justifyContent="space-between" mb={2} fontSize="2xs" fontFamily="monospace" color="gray.400">
           <Text>
-            TARGET EIP OFFSET: <span style={{ color: '#00ff88', fontWeight: 'bold' }}>{targetOffset} BYTES</span>
+            TARGET EIP OFFSET: <span style={{ color: '#00ff88', fontWeight: 'bold' }}>{targetOffset} BYTES</span> (&plusmn;{tolerance})
           </Text>
           <Text>
             CURRENT PAYLOAD: <span style={{ color: '#00f0ff', fontWeight: 'bold' }}>{currentOffset} BYTES</span>
@@ -157,6 +175,36 @@ export const BufferOverflowMinigame: React.FC<BufferOverflowMinigameProps> = ({
           <Text>0x40 [CANARY]</Text>
           <Text>0x80 [RET ADDRESS]</Text>
         </HStack>
+
+        {requiresCanary && (
+          <>
+            <Flex justifyContent="space-between" mb={2} mt={3} fontSize="2xs" fontFamily="monospace" color="gray.400">
+              <Text>
+                TARGET CANARY OFFSET:{' '}
+                <span style={{ color: '#ff0055', fontWeight: 'bold' }}>{targetCanaryOffset} BYTES</span> (&plusmn;{tolerance})
+              </Text>
+              <Text>
+                CURRENT: <span style={{ color: '#ff8800', fontWeight: 'bold' }}>{currentCanaryOffset} BYTES</span>
+              </Text>
+            </Flex>
+            <Slider
+              value={currentCanaryOffset}
+              min={0}
+              max={100}
+              step={1}
+              onChange={(val) => {
+                soundFx.playKeyClick();
+                canaryOffsetRef.current = val;
+                setCurrentCanaryOffset(val);
+              }}
+            >
+              <SliderTrack bg="rgba(255, 255, 255, 0.1)">
+                <SliderFilledTrack bg="#ff8800" />
+              </SliderTrack>
+              <SliderThumb boxSize={4} bg="#ff8800" />
+            </Slider>
+          </>
+        )}
       </Box>
 
       <Button
@@ -175,7 +223,7 @@ export const BufferOverflowMinigame: React.FC<BufferOverflowMinigameProps> = ({
       </Button>
 
       <Text fontSize="3xs" color="gray.500" fontFamily="monospace" textAlign="center">
-        Use LEFT / RIGHT ARROW KEYS to adjust offset slider & ENTER to inject payload
+        Use LEFT / RIGHT ARROW KEYS to adjust the EIP offset{requiresCanary ? ', drag the CANARY slider,' : ''} & ENTER to inject payload
       </Text>
     </Box>
   );
